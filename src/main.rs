@@ -1,8 +1,5 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-mod tenkijp;
-mod weather;
-
 const VERSION: &'static str = "0.1.0";
 const APP_NAME: &'static str = "tenki-rs";
 

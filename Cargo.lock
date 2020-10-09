@@ -1248,9 +1248,19 @@ dependencies = [
 name = "tenki-rs"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "chrono",
  "clap",
+ "serde",
+ "tenkijp",
+ "ucd",
+]
+
+[[package]]
+name = "tenkijp"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "chrono",
  "itertools",
  "regex",
  "reqwest",
@@ -1259,7 +1269,6 @@ dependencies = [
  "serde",
  "strum",
  "strum_macros",
- "ucd",
 ]
 
 [[package]]
