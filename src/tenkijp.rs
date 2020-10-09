@@ -1,4 +1,5 @@
 use crate::weather::{Announce, DailyForecast, Weather, WeatherKind, WindDirection};
+use chrono::prelude::*;
 use itertools::izip;
 use scraper::{Html, Selector};
 
@@ -57,12 +58,20 @@ fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>, Error> {
             (location, announced_time)
         };
 
+        let local_today = chrono::Local::today();
         let date_regex = regex::Regex::new(r#"(\d+)月(\d+)日"#).unwrap();
         let parse_date = |input: &str| -> Option<chrono::NaiveDate> {
             let grp = date_regex.captures(input)?;
             let m: u32 = grp.get(1)?.as_str().parse().unwrap();
             let d: u32 = grp.get(2)?.as_str().parse().unwrap();
-            Some(chrono::NaiveDate::from_ymd(0, m, d))
+            // check year wrapping
+            // NOTE: is this always correct?
+            let y: i32 = if m == 1 && local_today.month() == 12 {
+                local_today.year() + 1
+            } else {
+                local_today.year()
+            };
+            Some(chrono::NaiveDate::from_ymd(y, m, d))
         };
 
         let mut forecasts = Vec::new();
