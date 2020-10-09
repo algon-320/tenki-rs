@@ -1,7 +1,6 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
@@ -104,6 +103,7 @@ pub struct DailyForecast {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::string::ToString;
 
     #[test]
     fn test_parse_weather_kind() {

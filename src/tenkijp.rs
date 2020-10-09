@@ -1,5 +1,5 @@
 use crate::weather::{Announce, DailyForecast, Weather, WeatherKind, WindDirection};
-use itertools::{izip, Itertools};
+use itertools::izip;
 use scraper::{Html, Selector};
 
 #[derive(Debug)]
