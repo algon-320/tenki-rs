@@ -153,3 +153,24 @@ pub fn fetch_each_1hour_forecast() -> Result<Box<[DailyForecast; 3]>, Error> {
 pub fn fetch_10days() -> Result<Box<[DailyForecast; 10]>, Error> {
     todo!()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fetch_3days() {
+        match fetch_each_3hours_forecast() {
+            Err(Error::InvalidHtml) => {
+                panic!("page layout updated?");
+            }
+            _ => {}
+        }
+        match fetch_each_1hour_forecast() {
+            Err(Error::InvalidHtml) => {
+                panic!("page layout updated?");
+            }
+            _ => {}
+        }
+    }
+}
