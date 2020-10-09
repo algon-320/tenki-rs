@@ -16,7 +16,7 @@ impl std::fmt::Display for Error {
     }
 }
 
-fn fetch_3days_forecast(h: u8) -> Result<[DailyForecast; 3], Error> {
+fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>, Error> {
     assert!(h == 1 || h == 3);
 
     let url = format!(
@@ -46,7 +46,7 @@ fn fetch_3days_forecast(h: u8) -> Result<[DailyForecast; 3], Error> {
     let selector_wind_dir = Selector::parse("tr.wind-direction > td, tr.wind-blow > td").unwrap();
     let selector_wind_speed = Selector::parse("tr.wind-speed > td").unwrap();
 
-    move || -> Option<[DailyForecast; 3]> {
+    move || -> Option<Box<[DailyForecast; 3]>> {
         let (location, announced_time) = {
             let mut text = document
                 .select(&selector_location_announced_time)
@@ -131,22 +131,25 @@ fn fetch_3days_forecast(h: u8) -> Result<[DailyForecast; 3], Error> {
         }
 
         use std::convert::TryInto;
-        Some(forecasts.try_into().unwrap())
+        Some(forecasts.into_boxed_slice().try_into().unwrap())
     }()
     .ok_or(Error::InvalidHtml)
 }
 
 /// 3時間天気
-pub fn fetch_each_3hours_forecast() -> Result<[DailyForecast; 3], Error> {
+#[allow(dead_code)]
+pub fn fetch_each_3hours_forecast() -> Result<Box<[DailyForecast; 3]>, Error> {
     fetch_3days_forecast(3)
 }
 
 /// 1時間天気
-pub fn fetch_each_1hour_forecast() -> Result<[DailyForecast; 3], Error> {
+#[allow(dead_code)]
+pub fn fetch_each_1hour_forecast() -> Result<Box<[DailyForecast; 3]>, Error> {
     fetch_3days_forecast(1)
 }
 
 /// 10日間天気
-pub fn fetch_10days() -> Result<[DailyForecast; 10], Error> {
+#[allow(dead_code)]
+pub fn fetch_10days() -> Result<Box<[DailyForecast; 10]>, Error> {
     todo!()
 }
