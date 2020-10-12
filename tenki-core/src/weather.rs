@@ -48,8 +48,8 @@ pub enum WindDirection {
     E,
     #[strum(to_string = "東南東")]
     ESE,
-    #[strum(to_string = "東南")]
-    ES,
+    #[strum(to_string = "南東")]
+    SE,
     #[strum(to_string = "南南東")]
     SSE,
     #[strum(to_string = "南")]
@@ -62,10 +62,10 @@ pub enum WindDirection {
     WSW,
     #[strum(to_string = "西")]
     W,
-    #[strum(to_string = "西西北")]
-    WWN,
-    #[strum(to_string = "西北")]
-    WN,
+    #[strum(to_string = "西北西")]
+    WNW,
+    #[strum(to_string = "北西")]
+    NW,
     #[strum(to_string = "北北西")]
     NNW,
 }
