@@ -1,6 +1,5 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use strum_macros::{Display, EnumString};
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
@@ -27,11 +26,6 @@ pub enum WeatherKind {
     Sleet,
     #[strum(default)]
     Other(String),
-}
-impl WeatherKind {
-    pub fn parse(s: &str) -> Self {
-        WeatherKind::from_str(s).unwrap()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
@@ -69,11 +63,6 @@ pub enum WindDirection {
     #[strum(to_string = "北北西")]
     NNW,
 }
-impl WindDirection {
-    pub fn parse(s: &str) -> Option<Self> {
-        WindDirection::from_str(s).ok()
-    }
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Weather {
@@ -103,6 +92,7 @@ pub struct DailyForecast {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
     use std::string::ToString;
 
     #[test]
