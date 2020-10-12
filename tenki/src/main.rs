@@ -28,7 +28,7 @@ fn main() {
         .unwrap_or(2);
     dbg!(days);
 
-    let forecasts = match tenkijp::fetch_each_3hours_forecast() {
+    let forecasts = match tenki_core::fetch_each_3hours_forecast() {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
@@ -46,7 +46,7 @@ fn main() {
         let mut wind_direction: Vec<String> = Vec::new();
         let mut wind_speed: Vec<String> = Vec::new();
 
-        use tenkijp::weather::*;
+        use tenki_core::weather::*;
         for (h, w) in &f.weathers {
             hour.push(format!("{:02}", h.hour()));
             match w {
