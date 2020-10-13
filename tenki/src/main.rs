@@ -36,61 +36,92 @@ fn main() {
         }
     };
 
+    let mut table = table::Table::empty(&forecasts[0].location, 4 + forecasts[0].weathers.len());
     for f in forecasts.iter().take(days) {
-        let mut hour: Vec<String> = Vec::new();
-        let mut kind: Vec<String> = Vec::new();
-        let mut temperature: Vec<String> = Vec::new();
-        let mut prob_precip: Vec<String> = Vec::new();
-        let mut precipitation: Vec<String> = Vec::new();
-        let mut humidity: Vec<String> = Vec::new();
-        let mut wind_direction: Vec<String> = Vec::new();
-        let mut wind_speed: Vec<String> = Vec::new();
+        let mut hour = Vec::new();
+        const FIELDS: usize = 7;
+        use table::Cell;
+        let mut rows = vec![
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right(format!("{}月{}日", f.date.month(), f.date.day())),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("気温(度)"),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("降水確率(%)"),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("降水量(mm/h)"),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("湿度(%)"),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("風向"),
+                Cell::VarticalBorder,
+            ],
+            vec![
+                Cell::VarticalBorder,
+                Cell::new_right("風速(m/s)"),
+                Cell::VarticalBorder,
+            ],
+        ];
 
         use tenki_core::weather::*;
         for (h, w) in &f.weathers {
             hour.push(format!("{:02}", h.hour()));
-            match w {
-                Announce::Past(w) | Announce::Regular(w) => {
-                    kind.push(format!("{}", w.kind));
-                    temperature.push(format!("{}", w.temperature));
-                    prob_precip.push(
-                        w.prob_precip
-                            .map(|x| format!("{}", x))
-                            .unwrap_or_else(|| "----".to_owned()),
-                    );
-                    precipitation.push(format!("{}", w.precipitation));
-                    humidity.push(format!("{}", w.humidity));
-                    wind_direction.push(format!("{}", w.wind_direction));
-                    wind_speed.push(format!("{}", w.wind_speed));
-                }
-                NotYet => {
-                    kind.push("----".to_owned());
-                    temperature.push("----".to_owned());
-                    prob_precip.push("----".to_owned());
-                    precipitation.push("----".to_owned());
-                    humidity.push("----".to_owned());
-                    wind_direction.push("----".to_owned());
-                    wind_speed.push("----".to_owned());
-                }
+
+            let fields: [Option<&dyn std::fmt::Display>; FIELDS] = match w {
+                Announce::Past(w) | Announce::Regular(w) => [
+                    Some(&w.kind),
+                    Some(&w.temperature),
+                    w.prob_precip.as_ref().map(|p| p as &dyn std::fmt::Display),
+                    Some(&w.precipitation),
+                    Some(&w.humidity),
+                    Some(&w.wind_direction),
+                    Some(&w.wind_speed),
+                ],
+                Announce::NotYet => [None; FIELDS],
+            };
+            for (row, field) in rows.iter_mut().zip(&fields) {
+                row.push(Cell::new_right(
+                    field
+                        .map(ToString::to_string)
+                        .unwrap_or_else(|| "----".to_owned()),
+                ));
             }
         }
-        println!("=====================");
-        println!("{:?}", hour);
-        println!("{:?}", kind);
-        println!("{:?}", temperature);
-        println!("{:?}", prob_precip);
-        println!("{:?}", precipitation);
-        println!("{:?}", humidity);
-        println!("{:?}", wind_direction);
-        println!("{:?}", wind_speed);
-    }
+        for row in rows.iter_mut() {
+            row.push(Cell::VarticalBorder);
+        }
 
-    use table::*;
-    let mut columns = Vec::new();
-    // upper left cell (empty)
-    columns.push(Column {
-        name: "".to_owned(),
-        layout: ColumnLayout::Right,
-    });
-    let mut table = table::Table::<String>::empty(&forecasts[0].location, columns);
+        let mut row = Vec::new();
+        row.push(Cell::VarticalBorder);
+        row.push(Cell::Empty);
+        row.push(Cell::VarticalBorder);
+        for h in hour {
+            row.push(Cell::new_right(h.to_string()));
+        }
+        row.push(Cell::VarticalBorder);
+
+        table.add_horizontal_border();
+
+        for row in rows {
+            table.add_row(row).unwrap();
+        }
+    }
+    table.add_horizontal_border();
+    println!("{}", table);
 }
