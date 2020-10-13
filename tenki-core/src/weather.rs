@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
 pub enum WeatherKind {
     #[strum(to_string = "晴れ")]
     Sunny,
@@ -28,7 +28,7 @@ pub enum WeatherKind {
     Other(String),
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
 pub enum WindDirection {
     #[strum(to_string = "北")]
     N,
@@ -64,7 +64,7 @@ pub enum WindDirection {
     NNW,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Weather {
     pub kind: WeatherKind,             //
     pub temperature: f32,              // ℃
@@ -75,14 +75,14 @@ pub struct Weather {
     pub wind_speed: u32,               // m
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Announce {
     Past(Weather),
     Regular(Weather),
     NotYet,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DailyForecast {
     pub location: String,
     pub date: NaiveDate,
