@@ -1,4 +1,4 @@
-use crate::weather::{Announce, DailyForecast, Weather, WeatherKind, WindDirection};
+use crate::weather::*;
 use chrono::prelude::*;
 use itertools::izip;
 use scraper::{Html, Selector};
@@ -61,23 +61,12 @@ fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>> {
             (location, announced_time)
         };
 
-        let local_today = chrono::Local::today();
-        let date_regex = regex::Regex::new(r#"(\d+)月(\d+)日"#).unwrap();
-        let parse_date = |input: &str| -> Option<chrono::NaiveDate> {
-            let grp = date_regex.captures(input)?;
-            let m: u32 = grp.get(1)?.as_str().parse().unwrap();
-            let d: u32 = grp.get(2)?.as_str().parse().unwrap();
-            // check year wrapping
-            // NOTE: is this always correct?
-            let y: i32 = if m == 1 && local_today.month() == 12 {
-                local_today.year() + 1
-            } else {
-                local_today.year()
-            };
-            Some(chrono::NaiveDate::from_ymd(y, m, d))
-        };
+        let local_today = Local::today();
+        let date_regex =
+            regex::Regex::new(r#"(?:今日|明日|明後日)(?:&nbsp;|\W)((?:(\d+)年)?(\d+)月(\d+)日)?"#)
+                .unwrap();
 
-        let mut forecasts = Vec::new();
+        let mut forecasts: Vec<DailyForecast> = Vec::new();
         for table in document.select(&selector_tables) {
             let table = Html::parse_fragment(&table.html());
 
@@ -85,7 +74,26 @@ fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>> {
                 location: format!("{} ({})", location, announced_time),
                 date: {
                     let date = table.select(&selector_head).next().unwrap().inner_html();
-                    parse_date(date.as_str()).ok_or("invalid date")?
+                    let grp = date_regex.captures(&date).ok_or("invalid date format")?;
+                    if grp.get(1).is_some() {
+                        let m: u32 = grp.get(3).unwrap().as_str().parse().unwrap();
+                        let d: u32 = grp.get(4).unwrap().as_str().parse().unwrap();
+                        let y: i32 = match grp.get(2) {
+                            Some(sub) => sub.as_str().parse().unwrap(),
+                            None => {
+                                // check year wrapping
+                                // NOTE: is this always correct?
+                                if m == 1 && local_today.month() == 12 {
+                                    local_today.year() + 1
+                                } else {
+                                    local_today.year()
+                                }
+                            }
+                        };
+                        chrono::NaiveDate::from_ymd(y, m, d)
+                    } else {
+                        forecasts.last().unwrap().date.succ()
+                    }
                 },
                 weathers: {
                     izip!(
