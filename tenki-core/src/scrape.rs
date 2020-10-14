@@ -5,6 +5,7 @@ use scraper::{Html, Selector};
 
 #[derive(Debug)]
 pub enum Error {
+    InvalidLocation,
     NetworkError { msg: String },
     InvalidHtml { msg: String },
 }
@@ -13,19 +14,22 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::InvalidLocation => write!(f, "Invalid Location"),
             Error::NetworkError { msg } => write!(f, "Network Error: {}", msg),
             Error::InvalidHtml { msg } => write!(f, "Invalid HTML: {}", msg),
         }
     }
 }
 
-fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>> {
+fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyForecast; 3]>> {
     assert!(h == 1 || h == 3);
 
-    let url = format!(
-        "https://tenki.jp/forecast/3/11/4020/8220/{}.html",
+    let url = reqwest::Url::parse(&format!(
+        "https://tenki.jp/forecast/{}/{}.html",
+        location_code,
         if h == 3 { "3hours" } else { "1hour" }
-    );
+    ))
+    .map_err(|_| Error::InvalidLocation)?;
     let html = reqwest::blocking::get(url.as_str())
         .map_err(|e| Error::NetworkError {
             msg: format!("{}", e),
@@ -164,19 +168,19 @@ fn fetch_3days_forecast(h: u8) -> Result<Box<[DailyForecast; 3]>> {
 
 /// 3時間天気
 #[allow(dead_code)]
-pub fn fetch_each_3hours_forecast() -> Result<Box<[DailyForecast; 3]>> {
-    fetch_3days_forecast(3)
+pub fn fetch_each_3hours_forecast(location_code: &str) -> Result<Box<[DailyForecast; 3]>> {
+    fetch_3days_forecast(location_code, 3)
 }
 
 /// 1時間天気
 #[allow(dead_code)]
-pub fn fetch_each_1hour_forecast() -> Result<Box<[DailyForecast; 3]>> {
-    fetch_3days_forecast(1)
+pub fn fetch_each_1hour_forecast(location_code: &str) -> Result<Box<[DailyForecast; 3]>> {
+    fetch_3days_forecast(location_code, 1)
 }
 
 /// 10日間天気
 #[allow(dead_code)]
-pub fn fetch_10days() -> Result<Box<[DailyForecast; 10]>> {
+pub fn fetch_10days(_location_code: &str) -> Result<Box<[DailyForecast; 10]>> {
     todo!()
 }
 
@@ -186,13 +190,14 @@ mod tests {
 
     #[test]
     fn test_fetch_3days() {
-        match fetch_each_3hours_forecast() {
+        let location_tsukuba = "3/11/4020/8220";
+        match fetch_each_3hours_forecast(location_tsukuba) {
             Err(Error::InvalidHtml { msg }) => {
                 panic!("page layout updated? msg = {}", msg);
             }
             _ => {}
         }
-        match fetch_each_1hour_forecast() {
+        match fetch_each_1hour_forecast(location_tsukuba) {
             Err(Error::InvalidHtml { msg }) => {
                 panic!("page layout updated? msg = {}", msg);
             }

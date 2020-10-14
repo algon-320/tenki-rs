@@ -28,7 +28,8 @@ fn main() {
         .unwrap_or(2);
     dbg!(days);
 
-    let forecasts = match tenki_core::fetch_each_3hours_forecast() {
+    let tsukuba = "3/11/4020/8220";
+    let forecasts = match tenki_core::fetch_each_3hours_forecast(tsukuba) {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
