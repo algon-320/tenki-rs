@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::fmt::Display;
 
 #[derive(Debug)]
@@ -64,17 +66,6 @@ impl Table {
             title: title.into(),
             column_count,
             matrix: Vec::new(),
-        }
-    }
-    pub fn with_matrix(title: impl Into<String>, matrix: Vec<Vec<Cell>>) -> Self {
-        let column_count = matrix.get(0).map(|r| r.len()).unwrap_or(0);
-        for r in &matrix {
-            assert_eq!(column_count, r.len());
-        }
-        Self {
-            title: title.into(),
-            column_count,
-            matrix,
         }
     }
     pub fn add_row(&mut self, row: Vec<Cell>) -> Result<()> {
