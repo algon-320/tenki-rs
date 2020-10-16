@@ -38,6 +38,7 @@ fn main() {
     };
 
     let mut table = table::Table::empty(&forecasts[0].location, 4 + forecasts[0].weathers.len());
+    table.add_horizontal_border();
     for f in forecasts.iter().take(days) {
         let mut hour = Vec::new();
         const FIELDS: usize = 7;
@@ -116,6 +117,7 @@ fn main() {
             row.push(Cell::new_right(h.to_string()));
         }
         row.push(Cell::VarticalBorder);
+        table.add_row(row).unwrap();
 
         table.add_horizontal_border();
 
