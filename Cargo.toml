@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "tenki-core",
+    "core",
     "tenki",
 ]
