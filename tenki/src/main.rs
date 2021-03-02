@@ -40,9 +40,26 @@ fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> St
 
 fn main() {
     let app = App::new("tenki-rs")
+        .version(env!("CARGO_PKG_VERSION"))
         .author("algon-320 <algon.0320@mail.com>")
         .about("tenki.jp unofficial CLI client")
-        .arg(Arg::with_name("days").required(false));
+        .arg(
+            Arg::with_name("days")
+                .short("d")
+                .long("days")
+                .takes_value(true)
+                .help("integer between 1 to 3")
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("location")
+                .takes_value(true)
+                .help(
+                    "the location part of tenki.jp URL to show
+(e.g. \"3/11/4020/8220\" for Tsukuba city (default))",
+                )
+                .required(false),
+        );
     let matches = app.get_matches();
 
     let days: usize = matches
@@ -50,14 +67,16 @@ fn main() {
         .and_then(|days| match days.parse().ok() {
             Some(d) if (1..=3).contains(&d) => Some(d),
             _ => {
-                eprintln!("tenki-rs: 'days' option must be an integer between 1 to 3",);
+                eprintln!("tenki-rs: 'days' option must be an integer between 1 to 3");
                 None
             }
         })
         .unwrap_or(2);
+    let location: &str = matches
+        .value_of("location")
+        .unwrap_or("3/11/4020/8220" /* Tsukuba */);
 
-    let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let forecasts = match tenki_core::fetch_each_3hours_forecast(tsukuba) {
+    let forecasts = match tenki_core::fetch_each_3hours_forecast(location) {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
