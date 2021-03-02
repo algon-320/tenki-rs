@@ -109,7 +109,7 @@ fn main() {
                     style: Style::default(),
                 }];
                 hour.extend(f.weathers.iter().map(|(h, _)| Cell {
-                    value: format!("{:02}", h.hour()),
+                    value: format!("{:02}時", h.hour()),
                     align: Align::Left,
                     style: Style::new().bold(),
                 }));
