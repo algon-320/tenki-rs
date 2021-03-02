@@ -1,34 +1,62 @@
+use box_drawing_table::{
+    ansi_term::{Color, Style},
+    Align, Border, Cell, CellSize, Column, Row, Table,
+};
 use chrono::prelude::*;
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg};
 
-const VERSION: &'static str = "0.1.0";
-const APP_NAME: &'static str = "tenki-rs";
+fn japanese_weekday(wd: Weekday) -> &'static str {
+    match wd {
+        Weekday::Mon => "月",
+        Weekday::Tue => "火",
+        Weekday::Wed => "水",
+        Weekday::Thu => "木",
+        Weekday::Fri => "金",
+        Weekday::Sat => "土",
+        Weekday::Sun => "日",
+    }
+}
 
-mod table;
+fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> Style {
+    use tenki_core::weather::WeatherKind::*;
+    let mut base = Style::new().bold();
+    if past {
+        base = base.dimmed();
+    }
+    match w {
+        Sunny => base.fg(Color::RGB(255, 159, 33)),
+        Cloudy => base.fg(Color::RGB(194, 189, 182)),
+        LittleRain => base.fg(Color::RGB(85, 208, 242)),
+        WeakRain => base.fg(Color::RGB(85, 150, 242)),
+        Rainy => base.fg(Color::RGB(0, 106, 255)),
+        HeavyRain => base.fg(Color::RGB(143, 74, 255)),
+        Storm => base.fg(Color::RGB(255, 18, 97)),
+        DrySnow => base.fg(Color::RGB(64, 219, 154)),
+        WetSnow => base.fg(Color::RGB(108, 224, 211)),
+        Sleet => base.fg(Color::RGB(139, 180, 247)),
+        Other(_) => base.fg(Color::RGB(255, 18, 180)),
+    }
+}
 
 fn main() {
-    let app = App::new(APP_NAME)
-        .version(VERSION)
+    let app = App::new("tenki-rs")
         .author("algon-320 <algon.0320@mail.com>")
         .about("tenki.jp unofficial CLI client")
         .arg(Arg::with_name("days").required(false));
     let matches = app.get_matches();
+
     let days: usize = matches
         .value_of("days")
         .and_then(|days| match days.parse().ok() {
-            Some(d) if 1 <= d && d <= 3 => Some(d),
+            Some(d) if (1..=3).contains(&d) => Some(d),
             _ => {
-                println!(
-                    "{}: 'days' option must be an integer between 1 to 3",
-                    APP_NAME
-                );
+                eprintln!("tenki-rs: 'days' option must be an integer between 1 to 3",);
                 None
             }
         })
         .unwrap_or(2);
-    dbg!(days);
 
-    let tsukuba = "3/11/4020/8220";
+    let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
     let forecasts = match tenki_core::fetch_each_3hours_forecast(tsukuba) {
         Ok(f) => f,
         Err(e) => {
@@ -37,94 +65,212 @@ fn main() {
         }
     };
 
-    let mut table = table::Table::empty(&forecasts[0].location, 4 + forecasts[0].weathers.len());
-    table.add_horizontal_border();
-    for f in forecasts.iter().take(days) {
-        let mut hour = Vec::new();
-        const FIELDS: usize = 7;
-        use table::Cell;
-        let mut rows = vec![
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right(format!("{}月{}日", f.date.month(), f.date.day())),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("気温(度)"),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("降水確率(%)"),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("降水量(mm/h)"),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("湿度(%)"),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("風向"),
-                Cell::VarticalBorder,
-            ],
-            vec![
-                Cell::VarticalBorder,
-                Cell::new_right("風速(m/s)"),
-                Cell::VarticalBorder,
-            ],
-        ];
+    let title = forecasts[0].location.to_string();
 
-        use tenki_core::weather::*;
-        for (h, w) in &f.weathers {
-            hour.push(format!("{:02}", h.hour()));
-
-            let fields: [Option<&dyn std::fmt::Display>; FIELDS] = match w {
-                Announce::Past(w) | Announce::Regular(w) => [
-                    Some(&w.kind),
-                    Some(&w.temperature),
-                    w.prob_precip.as_ref().map(|p| p as &dyn std::fmt::Display),
-                    Some(&w.precipitation),
-                    Some(&w.humidity),
-                    Some(&w.wind_direction),
-                    Some(&w.wind_speed),
-                ],
-                Announce::NotYet => [None; FIELDS],
-            };
-            for (row, field) in rows.iter_mut().zip(&fields) {
-                row.push(Cell::new_right(
-                    field
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| "----".to_owned()),
-                ));
-            }
+    let mut columns = Vec::new();
+    {
+        columns.push(Column::VerticalBorder(Border::Double));
+        columns.push(Column::Cells {
+            width: CellSize::Flexible,
+        });
+        columns.push(Column::VerticalBorder(Border::Double));
+        for _ in 0..forecasts[0].weathers.len() {
+            columns.push(Column::Cells {
+                width: CellSize::Fixed(6),
+            });
+            columns.push(Column::VerticalBorder(Border::Single));
         }
-        for row in rows.iter_mut() {
-            row.push(Cell::VarticalBorder);
-        }
-
-        let mut row = Vec::new();
-        row.push(Cell::VarticalBorder);
-        row.push(Cell::Empty);
-        row.push(Cell::VarticalBorder);
-        for h in hour {
-            row.push(Cell::new_right(h.to_string()));
-        }
-        row.push(Cell::VarticalBorder);
-        table.add_row(row).unwrap();
-
-        table.add_horizontal_border();
-
-        for row in rows {
-            table.add_row(row).unwrap();
-        }
+        columns.pop();
+        columns.push(Column::VerticalBorder(Border::Double));
     }
-    table.add_horizontal_border();
-    println!("{}", table);
+    let mut table = Table::new(columns);
+
+    for f in forecasts.iter().take(days) {
+        use tenki_core::weather::*;
+
+        let not_yet = Cell {
+            value: "------".to_owned(),
+            align: Align::Left,
+            style: Style::default(),
+        };
+
+        table.append_row(Row::HorizontalBorder(Border::Double));
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut hour = vec![Cell {
+                    value: format!(
+                        "{}月{}日({})",
+                        f.date.month(),
+                        f.date.day(),
+                        japanese_weekday(f.date.weekday()),
+                    ),
+                    align: Align::Right,
+                    style: Style::default(),
+                }];
+                hour.extend(f.weathers.iter().map(|(h, _)| Cell {
+                    value: format!("{:02}", h.hour()),
+                    align: Align::Left,
+                    style: Style::new().bold(),
+                }));
+                hour
+            },
+        });
+
+        table.append_row(Row::HorizontalBorder(Border::Single));
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut kind = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "天気".to_owned(),
+                }];
+                kind.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) => Cell {
+                        value: w.kind.to_string(),
+                        align: Align::Left,
+                        style: get_weather_style_rgb(&w.kind, true),
+                    },
+                    Announce::Regular(w) => Cell {
+                        value: w.kind.to_string(),
+                        align: Align::Left,
+                        style: get_weather_style_rgb(&w.kind, false),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                kind
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut temperature = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "気温(度)".to_owned(),
+                }];
+                temperature.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) | Announce::Regular(w) => Cell {
+                        value: w.temperature.to_string(),
+                        align: Align::Left,
+                        style: Style::default(),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                temperature
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut prob_precip = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "降水確率(%)".to_owned(),
+                }];
+                prob_precip.extend(f.weathers.iter().map(|(_, announce)| {
+                    match announce {
+                        Announce::Past(w) | Announce::Regular(w) => Cell {
+                            value: w
+                                .prob_precip
+                                .map(|p| p.to_string())
+                                .unwrap_or_else(|| "------".to_owned()),
+                            align: Align::Left,
+                            style: Style::default(),
+                        },
+                        Announce::NotYet => not_yet.clone(),
+                    }
+                }));
+                prob_precip
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut precipitation = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "降水量(mm/h)".to_owned(),
+                }];
+                precipitation.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) | Announce::Regular(w) => Cell {
+                        value: w.precipitation.to_string(),
+                        align: Align::Left,
+                        style: Style::default(),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                precipitation
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut humidity = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "湿度(%)".to_owned(),
+                }];
+                humidity.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) | Announce::Regular(w) => Cell {
+                        value: w.humidity.to_string(),
+                        align: Align::Left,
+                        style: Style::default(),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                humidity
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut wind_direction = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "風向".to_owned(),
+                }];
+                wind_direction.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) | Announce::Regular(w) => Cell {
+                        value: w.wind_direction.to_string(),
+                        align: Align::Left,
+                        style: Style::default(),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                wind_direction
+            },
+        });
+
+        table.append_row(Row::Cells {
+            height: CellSize::Flexible,
+            cells: {
+                let mut wind_speed = vec![Cell {
+                    style: Style::default(),
+                    align: Align::Right,
+                    value: "風速(m/s)".to_owned(),
+                }];
+                wind_speed.extend(f.weathers.iter().map(|(_, announce)| match announce {
+                    Announce::Past(w) | Announce::Regular(w) => Cell {
+                        value: w.wind_speed.to_string(),
+                        align: Align::Left,
+                        style: Style::default(),
+                    },
+                    Announce::NotYet => not_yet.clone(),
+                }));
+                wind_speed
+            },
+        });
+    }
+    table.append_row(Row::HorizontalBorder(Border::Double));
+
+    println!("{}", title);
+    print!("{}", table);
 }

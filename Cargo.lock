@@ -19,6 +19,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+dependencies = [
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -56,6 +65,16 @@ name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+
+[[package]]
+name = "box-drawing-table"
+version = "0.1.0"
+source = "git+https://github.com/algon-320/box-drawing-table?branch=main#c7fcdf0e5f1101186f5d8f14f1e7e72f41e57bac"
+dependencies = [
+ "ansi_term 0.12.1",
+ "textwrap 0.13.4",
+ "unicode-width",
+]
 
 [[package]]
 name = "bumpalo"
@@ -107,11 +126,11 @@ version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "atty",
  "bitflags",
  "strsim",
- "textwrap",
+ "textwrap 0.11.0",
  "unicode-width",
  "vec_map",
 ]
@@ -1142,6 +1161,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
 
 [[package]]
+name = "smawk"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f67ad224767faa3c7d8b6d91985b78e70a1324408abcb1cfcc2be4c06bc06043"
+
+[[package]]
 name = "socket2"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1264,11 +1289,12 @@ dependencies = [
 name = "tenki-rs"
 version = "0.1.0"
 dependencies = [
+ "box-drawing-table",
  "chrono",
  "clap",
  "serde",
  "tenki-core",
- "ucd",
+ "unicode-width",
 ]
 
 [[package]]
@@ -1277,6 +1303,16 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
+ "unicode-width",
+]
+
+[[package]]
+name = "textwrap"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd05616119e612a8041ef58f2b578906cc2531a6069047ae092cfb86a325d835"
+dependencies = [
+ "smawk",
  "unicode-width",
 ]
 
@@ -1386,12 +1422,6 @@ name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
-
-[[package]]
-name = "ucd"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe4fa6e588762366f1eb4991ce59ad1b93651d0b769dfb4e4d1c5c4b943d1159"
 
 [[package]]
 name = "unicase"
