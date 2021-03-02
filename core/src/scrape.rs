@@ -58,10 +58,10 @@ fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyForecast
             let mut text = document
                 .select(&selector_location_announced_time)
                 .next()
-                .ok_or_else(|| "location, announced_time not found")?
+                .ok_or("location, announced_time not found")?
                 .text();
-            let location = text.next().ok_or_else(|| "location not found")?;
-            let announced_time = text.next().ok_or_else(|| "announced_time not found")?;
+            let location = text.next().ok_or("location not found")?;
+            let announced_time = text.next().ok_or("announced_time not found")?;
             (location, announced_time)
         };
 
