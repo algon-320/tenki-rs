@@ -62,6 +62,9 @@ pub enum WindDirection {
     NW,
     #[strum(to_string = "北北西")]
     NNW,
+
+    #[strum(to_string = "静穏")]
+    Calm,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
