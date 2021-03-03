@@ -5,7 +5,7 @@ use box_drawing_table::{
 use chrono::prelude::*;
 use clap::{App, Arg};
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, time::SystemTime};
+use std::{fs::File, time::SystemTime};
 use tenki_core::weather::DailyForecast;
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
@@ -65,13 +65,12 @@ impl ForecastData {
 
     pub fn dump_to_file(&self, cache_file_name: &str) {
         let serialized_self = serde_json::to_string(self).expect("Serialize ForecastData");
-        std::fs::File::create(cache_file_name)
-            .and_then(|mut f| write!(f, "{}", serialized_self))
-            .expect("Dump ForecastData to cache file");
+        std::fs::write(cache_file_name, serialized_self).expect("Dump ForecastData to cache file");
     }
 
-    pub fn fetch_forecast(location_code: &str, cache_file_name: &str) -> Self {
-        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).unwrap_or_else(
+    // this funtion returns a tuple of ForecastData and flag of fetched new forecast
+    pub fn fetch_forecast(location_code: &str, cache_file_name: &str) -> (Self, bool) {
+        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).map_or_else(
             || {
                 let forecasts = match tenki_core::fetch_each_3hours_forecast(location_code) {
                     Ok(f) => f,
@@ -80,8 +79,12 @@ impl ForecastData {
                     }
                 };
 
-                Self::new(forecasts, location_code.to_string(), SystemTime::now())
+                (
+                    Self::new(forecasts, location_code.to_string(), SystemTime::now()),
+                    true,
+                )
             },
+            |fd| (fd, false),
         )
     }
 
@@ -123,7 +126,8 @@ fn main() {
         .unwrap_or(2);
 
     let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let forecast_data = ForecastData::fetch_forecast(tsukuba, CACHE_FILE_NAME);
+    let (forecast_data, fetched_new_forecast) =
+        ForecastData::fetch_forecast(tsukuba, CACHE_FILE_NAME);
     let forecasts = &forecast_data.forecasts;
 
     let title = forecasts[0].location.to_string();
@@ -335,5 +339,7 @@ fn main() {
     println!("{}", title);
     print!("{}", table);
 
-    forecast_data.dump_to_file(CACHE_FILE_NAME);
+    if fetched_new_forecast {
+        forecast_data.dump_to_file(CACHE_FILE_NAME);
+    }
 }
