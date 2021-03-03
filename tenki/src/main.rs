@@ -4,6 +4,9 @@ use box_drawing_table::{
 };
 use chrono::prelude::*;
 use clap::{App, Arg};
+use serde::{Deserialize, Serialize};
+use std::{fs::File, time::SystemTime};
+use tenki_core::weather::DailyForecast;
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
     match wd {
@@ -38,6 +41,60 @@ fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> St
     }
 }
 
+static CACHE_FILE_NAME: &str = "tenki.dump";
+
+#[derive(Deserialize, Serialize)]
+struct ForecastData {
+    forecasts: Box<[DailyForecast; 3]>,
+    location_code: String,
+    fetched_date: SystemTime,
+}
+
+impl ForecastData {
+    fn dump_to_file(&self, cache_file_name: &str) {
+        let serialized_self = serde_json::to_string(self).expect("Serialize ForecastData");
+        std::fs::write(cache_file_name, serialized_self).expect("Dump ForecastData to cache file");
+    }
+
+    // this funtion returns a tuple of ForecastData and flag of fetched new forecast
+    pub fn fetch(location_code: &str, cache_file_name: &str) -> Self {
+        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).unwrap_or_else(
+            || {
+                let forecasts = match tenki_core::fetch_each_3hours_forecast(location_code) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        panic!("{}", e);
+                    }
+                };
+
+                let forecast_data = Self {
+                    forecasts,
+                    location_code: location_code.to_string(),
+                    fetched_date: SystemTime::now(),
+                };
+
+                forecast_data.dump_to_file(cache_file_name);
+                forecast_data
+            },
+        )
+    }
+
+    fn read_from_valid_cache_file(
+        location_code: &str,
+        cache_file_name: &str,
+    ) -> Option<ForecastData> {
+        use std::time::Duration;
+
+        File::open(cache_file_name)
+            .ok()
+            .and_then(|f| serde_json::from_reader(f).ok())
+            .filter(|fc: &ForecastData| {
+                let duration = Duration::from_secs(60 * 60);
+                SystemTime::now() - duration < fc.fetched_date && location_code == fc.location_code
+            })
+    }
+}
+
 fn main() {
     let app = App::new("tenki-rs")
         .author("algon-320 <algon.0320@mail.com>")
@@ -57,13 +114,8 @@ fn main() {
         .unwrap_or(2);
 
     let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let forecasts = match tenki_core::fetch_each_3hours_forecast(tsukuba) {
-        Ok(f) => f,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
+    let forecast_data = ForecastData::fetch(tsukuba, CACHE_FILE_NAME);
+    let forecasts = &forecast_data.forecasts;
 
     let title = forecasts[0].location.to_string();
 
