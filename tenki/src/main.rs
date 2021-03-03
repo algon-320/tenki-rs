@@ -1,9 +1,16 @@
+use std::{
+    io::{BufWriter, Write},
+    time::{SystemTime, SystemTimeError},
+};
+
 use box_drawing_table::{
     ansi_term::{Color, Style},
     Align, Border, Cell, CellSize, Column, Row, Table,
 };
 use chrono::prelude::*;
 use clap::{App, Arg};
+use std::path::Path;
+use tenki_core::{weather::DailyForecast, Error};
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
     match wd {
@@ -38,6 +45,26 @@ fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> St
     }
 }
 
+static CACHE_FILE_NAME: &str = "tenki.dump";
+
+fn check_valid_cache() -> Option<String> {
+    use std::fs::metadata;
+    use std::time::Duration;
+
+    if Path::new(CACHE_FILE_NAME).exists() {
+        let created = metadata(CACHE_FILE_NAME).ok()?.created().ok()?;
+        let duration = Duration::from_secs(60 * 60);
+
+        if SystemTime::now() - duration < created {
+            Some(CACHE_FILE_NAME.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 fn main() {
     let app = App::new("tenki-rs")
         .author("algon-320 <algon.0320@mail.com>")
@@ -57,7 +84,11 @@ fn main() {
         .unwrap_or(2);
 
     let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let forecasts = match tenki_core::fetch_each_3hours_forecast(tsukuba) {
+    let forecasts = match check_valid_cache()
+        .and_then(|f| std::fs::File::open(f).ok())
+        .and_then(|f| serde_json::from_reader(f).ok())
+        .map_or_else(|| tenki_core::fetch_each_3hours_forecast(tsukuba), Ok)
+    {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
@@ -273,4 +304,11 @@ fn main() {
 
     println!("{}", title);
     print!("{}", table);
+
+    let forecasts_json_value =
+        serde_json::to_string(&forecasts).expect("seralize forecasts to JSON");
+
+    std::fs::File::create(CACHE_FILE_NAME)
+        .and_then(|mut f| write!(f, "{}", forecasts_json_value))
+        .expect("dump forecasts to cache file");
 }
