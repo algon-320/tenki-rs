@@ -4,7 +4,9 @@ use box_drawing_table::{
 };
 use chrono::prelude::*;
 use clap::{App, Arg};
-use std::io::Write;
+use serde::{Deserialize, Serialize};
+use std::{fs::File, io::Write, time::SystemTime};
+use tenki_core::weather::DailyForecast;
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
     match wd {
@@ -41,23 +43,64 @@ fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> St
 
 static CACHE_FILE_NAME: &str = "tenki.dump";
 
-fn check_valid_cache() -> Option<String> {
-    use std::fs::metadata;
-    use std::path::Path;
-    use std::time::Duration;
-    use std::time::SystemTime;
+#[derive(Deserialize, Serialize)]
+struct ForecastData {
+    forecasts: Box<[DailyForecast; 3]>,
+    location_code: String,
+    fetched_date: SystemTime,
+}
 
-    if Path::new(CACHE_FILE_NAME).exists() {
-        let created = metadata(CACHE_FILE_NAME).ok()?.created().ok()?;
-        let duration = Duration::from_secs(60 * 60);
-
-        if SystemTime::now() - duration < created {
-            Some(CACHE_FILE_NAME.to_string())
-        } else {
-            None
+impl ForecastData {
+    pub fn new(
+        forecasts: Box<[DailyForecast; 3]>,
+        location_code: String,
+        fetched_date: SystemTime,
+    ) -> Self {
+        Self {
+            forecasts,
+            location_code,
+            fetched_date,
         }
-    } else {
-        None
+    }
+
+    pub fn dump_to_file(&self, cache_file_name: &str) {
+        let serialized_self = serde_json::to_string(self).expect("Serialize ForecastData");
+        std::fs::File::create(cache_file_name)
+            .and_then(|mut f| write!(f, "{}", serialized_self))
+            .expect("Dump ForecastData to cache file");
+    }
+
+    pub fn fetch_forecast(location_code: &str, cache_file_name: &str) -> Self {
+        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).unwrap_or_else(
+            || {
+                let forecasts = match tenki_core::fetch_each_3hours_forecast(location_code) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        panic!("{}", e);
+                    }
+                };
+
+                Self::new(forecasts, location_code.to_string(), SystemTime::now())
+            },
+        )
+    }
+
+    fn read_from_valid_cache_file(
+        location_code: &str,
+        cache_file_name: &str,
+    ) -> Option<ForecastData> {
+        use std::path::Path;
+        use std::time::Duration;
+
+        Path::new(cache_file_name)
+            .exists()
+            .then(|| ())
+            .and_then(|_| File::open(cache_file_name).ok())
+            .and_then(|f| serde_json::from_reader(f).ok())
+            .filter(|fc: &ForecastData| {
+                let duration = Duration::from_secs(60 * 60);
+                SystemTime::now() - duration < fc.fetched_date && location_code == fc.location_code
+            })
     }
 }
 
@@ -80,17 +123,8 @@ fn main() {
         .unwrap_or(2);
 
     let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let forecasts = match check_valid_cache()
-        .and_then(|f| std::fs::File::open(f).ok())
-        .and_then(|f| serde_json::from_reader(f).ok())
-        .map_or_else(|| tenki_core::fetch_each_3hours_forecast(tsukuba), Ok)
-    {
-        Ok(f) => f,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
+    let forecast_data = ForecastData::fetch_forecast(tsukuba, CACHE_FILE_NAME);
+    let forecasts = &forecast_data.forecasts;
 
     let title = forecasts[0].location.to_string();
 
@@ -301,10 +335,5 @@ fn main() {
     println!("{}", title);
     print!("{}", table);
 
-    let forecasts_json_value =
-        serde_json::to_string(&forecasts).expect("seralize forecasts to JSON");
-
-    std::fs::File::create(CACHE_FILE_NAME)
-        .and_then(|mut f| write!(f, "{}", forecasts_json_value))
-        .expect("dump forecasts to cache file");
+    forecast_data.dump_to_file(CACHE_FILE_NAME);
 }
