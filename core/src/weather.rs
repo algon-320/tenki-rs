@@ -28,6 +28,7 @@ pub enum WeatherKind {
     Other(String),
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Display, EnumString)]
 pub enum WindDirection {
     #[strum(to_string = "北")]
