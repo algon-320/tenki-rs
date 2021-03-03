@@ -1,16 +1,10 @@
-use std::{
-    io::{BufWriter, Write},
-    time::{SystemTime, SystemTimeError},
-};
-
 use box_drawing_table::{
     ansi_term::{Color, Style},
     Align, Border, Cell, CellSize, Column, Row, Table,
 };
 use chrono::prelude::*;
 use clap::{App, Arg};
-use std::path::Path;
-use tenki_core::{weather::DailyForecast, Error};
+use std::io::Write;
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
     match wd {
@@ -49,7 +43,9 @@ static CACHE_FILE_NAME: &str = "tenki.dump";
 
 fn check_valid_cache() -> Option<String> {
     use std::fs::metadata;
+    use std::path::Path;
     use std::time::Duration;
+    use std::time::SystemTime;
 
     if Path::new(CACHE_FILE_NAME).exists() {
         let created = metadata(CACHE_FILE_NAME).ok()?.created().ok()?;
