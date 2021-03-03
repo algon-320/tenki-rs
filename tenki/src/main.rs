@@ -51,26 +51,14 @@ struct ForecastData {
 }
 
 impl ForecastData {
-    pub fn new(
-        forecasts: Box<[DailyForecast; 3]>,
-        location_code: String,
-        fetched_date: SystemTime,
-    ) -> Self {
-        Self {
-            forecasts,
-            location_code,
-            fetched_date,
-        }
-    }
-
-    pub fn dump_to_file(&self, cache_file_name: &str) {
+    fn dump_to_file(&self, cache_file_name: &str) {
         let serialized_self = serde_json::to_string(self).expect("Serialize ForecastData");
         std::fs::write(cache_file_name, serialized_self).expect("Dump ForecastData to cache file");
     }
 
     // this funtion returns a tuple of ForecastData and flag of fetched new forecast
-    pub fn fetch_forecast(location_code: &str, cache_file_name: &str) -> (Self, bool) {
-        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).map_or_else(
+    pub fn fetch(location_code: &str, cache_file_name: &str) -> Self {
+        ForecastData::read_from_valid_cache_file(location_code, cache_file_name).unwrap_or_else(
             || {
                 let forecasts = match tenki_core::fetch_each_3hours_forecast(location_code) {
                     Ok(f) => f,
@@ -79,12 +67,15 @@ impl ForecastData {
                     }
                 };
 
-                (
-                    Self::new(forecasts, location_code.to_string(), SystemTime::now()),
-                    true,
-                )
+                let forecast_data = Self {
+                    forecasts,
+                    location_code: location_code.to_string(),
+                    fetched_date: SystemTime::now(),
+                };
+
+                forecast_data.dump_to_file(cache_file_name);
+                forecast_data
             },
-            |fd| (fd, false),
         )
     }
 
@@ -92,13 +83,10 @@ impl ForecastData {
         location_code: &str,
         cache_file_name: &str,
     ) -> Option<ForecastData> {
-        use std::path::Path;
         use std::time::Duration;
 
-        Path::new(cache_file_name)
-            .exists()
-            .then(|| ())
-            .and_then(|_| File::open(cache_file_name).ok())
+        File::open(cache_file_name)
+            .ok()
             .and_then(|f| serde_json::from_reader(f).ok())
             .filter(|fc: &ForecastData| {
                 let duration = Duration::from_secs(60 * 60);
@@ -126,8 +114,7 @@ fn main() {
         .unwrap_or(2);
 
     let tsukuba = "3/11/4020/8220"; // TODO: make if configuarable
-    let (forecast_data, fetched_new_forecast) =
-        ForecastData::fetch_forecast(tsukuba, CACHE_FILE_NAME);
+    let forecast_data = ForecastData::fetch(tsukuba, CACHE_FILE_NAME);
     let forecasts = &forecast_data.forecasts;
 
     let title = forecasts[0].location.to_string();
@@ -338,8 +325,4 @@ fn main() {
 
     println!("{}", title);
     print!("{}", table);
-
-    if fetched_new_forecast {
-        forecast_data.dump_to_file(CACHE_FILE_NAME);
-    }
 }
