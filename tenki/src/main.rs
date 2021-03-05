@@ -88,19 +88,19 @@ fn main() {
 
     let mut columns = Vec::new();
     {
-        columns.push(Column::VerticalBorder(Border::Double));
+        columns.push(Border::Double.into());
         columns.push(Column::Cells {
             width: CellSize::Flexible,
         });
-        columns.push(Column::VerticalBorder(Border::Double));
+        columns.push(Border::Double.into());
         for _ in 0..forecasts[0].weathers.len() {
             columns.push(Column::Cells {
                 width: CellSize::Fixed(6),
             });
-            columns.push(Column::VerticalBorder(Border::Single));
+            columns.push(Border::Single.into());
         }
         columns.pop();
-        columns.push(Column::VerticalBorder(Border::Double));
+        columns.push(Border::Double.into());
     }
     let mut table = Table::new(columns);
 
@@ -113,7 +113,7 @@ fn main() {
             style: Style::default(),
         };
 
-        table.append_row(Row::HorizontalBorder(Border::Double));
+        table.append_row(Border::Double.into());
         table.append_row(Row::Cells {
             height: CellSize::Flexible,
             cells: {
@@ -136,7 +136,7 @@ fn main() {
             },
         });
 
-        table.append_row(Row::HorizontalBorder(Border::Single));
+        table.append_row(Border::Single.into());
 
         table.append_row(Row::Cells {
             height: CellSize::Flexible,
@@ -288,7 +288,7 @@ fn main() {
             },
         });
     }
-    table.append_row(Row::HorizontalBorder(Border::Double));
+    table.append_row(Border::Double.into());
 
     println!("{}", title);
     print!("{}", table);
