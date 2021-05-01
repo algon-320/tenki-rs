@@ -30,12 +30,14 @@ fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyForecast
         if h == 3 { "3hours" } else { "1hour" }
     ))
     .map_err(|_| Error::InvalidLocation)?;
-    let html = reqwest::blocking::get(url.as_str())
-        .map_err(|e| Error::NetworkError {
-            msg: format!("{}", e),
-        })?
-        .text_with_charset("utf-8")
-        .unwrap();
+
+    let response = reqwest::blocking::get(url.as_str()).map_err(|e| Error::NetworkError {
+        msg: format!("{}", e),
+    })?;
+    if !response.status().is_success() {
+        return Err(Error::InvalidLocation);
+    }
+    let html = response.text_with_charset("utf-8").unwrap();
     let document = Html::parse_document(&html);
 
     let selector_location_announced_time = Selector::parse("h2").unwrap();
