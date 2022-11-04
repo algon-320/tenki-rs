@@ -61,7 +61,8 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 [[package]]
 name = "box-drawing-table"
 version = "0.1.0"
-source = "git+https://github.com/algon-320/box-drawing-table?branch=main#7711553401e91e77a0404667acac747befea76ee"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aea759434e0c3174eda193172d275ea9398c0dc7d7281e16f4471d518eb93185"
 dependencies = [
  "ansi_term",
  "textwrap 0.13.4",
@@ -1378,9 +1379,7 @@ dependencies = [
  "box-drawing-table",
  "chrono",
  "clap",
- "serde",
  "tenki-core",
- "unicode-width",
 ]
 
 [[package]]

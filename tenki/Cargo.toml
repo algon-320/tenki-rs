@@ -9,7 +9,5 @@ edition = "2018"
 [dependencies]
 clap = "2.33.3"
 chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
-unicode-width = "0.1.9"
+box-drawing-table = "0.1.0"
 tenki-core = { path = "../core" }
-box-drawing-table = { git = "https://github.com/algon-320/box-drawing-table", branch = "main" }
