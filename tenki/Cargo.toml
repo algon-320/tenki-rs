@@ -9,5 +9,6 @@ edition = "2018"
 [dependencies]
 clap = "2.33.3"
 chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
 box-drawing-table = "0.1.0"
 tenki-core = { path = "../core" }

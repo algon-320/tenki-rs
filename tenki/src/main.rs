@@ -4,6 +4,7 @@ use box_drawing_table::{
 };
 use chrono::prelude::*;
 use clap::{App, Arg};
+use std::io::Write as _;
 
 fn japanese_weekday(wd: Weekday) -> &'static str {
     match wd {
@@ -38,7 +39,8 @@ fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> St
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let app = App::new("tenki-rs")
         .version(env!("CARGO_PKG_VERSION"))
         .author("algon-320 <algon.0320@mail.com>")
@@ -76,13 +78,27 @@ fn main() {
         .value_of("location")
         .unwrap_or("3/11/4020/8220" /* Tsukuba */);
 
-    let forecasts = match tenki_core::fetch_each_3hours_forecast(location) {
+    let loading_indicator = tokio::task::spawn(async {
+        print!("loading ");
+        std::io::stdout().flush().unwrap();
+        loop {
+            print!(".");
+            std::io::stdout().flush().unwrap();
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        }
+    });
+
+    let forecasts = match tenki_core::fetch_each_3hours_forecast(location).await {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
             return;
         }
     };
+
+    loading_indicator.abort();
+    print!("\r\x1b[J"); // FIXME
+    std::io::stdout().flush().unwrap();
 
     let title = forecasts[0].location.to_string();
 
