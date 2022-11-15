@@ -69,7 +69,7 @@ async fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyFo
             (location, announced_time)
         };
 
-        let local_today = Local::today();
+        let local_now = Local::now();
         let date_regex =
             regex::Regex::new(r#"(?:今日|明日|明後日)(?:&nbsp;|\W)((?:(\d+)年)?(\d+)月(\d+)日)?"#)
                 .unwrap();
@@ -91,16 +91,16 @@ async fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyFo
                             None => {
                                 // check year wrapping
                                 // NOTE: is this always correct?
-                                if m == 1 && local_today.month() == 12 {
-                                    local_today.year() + 1
+                                if m == 1 && local_now.month() == 12 {
+                                    local_now.year() + 1
                                 } else {
-                                    local_today.year()
+                                    local_now.year()
                                 }
                             }
                         };
-                        chrono::NaiveDate::from_ymd(y, m, d)
+                        chrono::NaiveDate::from_ymd_opt(y, m, d).unwrap()
                     } else {
-                        forecasts.last().unwrap().date.succ()
+                        forecasts.last().unwrap().date.succ_opt().unwrap()
                     }
                 },
                 weathers: {
@@ -135,7 +135,7 @@ async fn fetch_3days_forecast(location_code: &str, h: u8) -> Result<Box<[DailyFo
 
                             let hour = {
                                 let hour: u32 = parse(&collect_text(hour), "hour")?;
-                                chrono::NaiveTime::from_hms(hour % 24, 0, 0)
+                                chrono::NaiveTime::from_hms_opt(hour % 24, 0, 0).unwrap()
                             };
 
                             if not_yet {
