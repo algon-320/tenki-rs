@@ -1357,6 +1357,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tenki"
+version = "0.1.0"
+dependencies = [
+ "box-drawing-table",
+ "chrono",
+ "clap",
+ "tenki-core",
+ "tokio",
+]
+
+[[package]]
 name = "tenki-core"
 version = "0.2.0"
 dependencies = [
@@ -1370,17 +1381,6 @@ dependencies = [
  "serde",
  "strum",
  "strum_macros",
- "tokio",
-]
-
-[[package]]
-name = "tenki-rs"
-version = "0.1.0"
-dependencies = [
- "box-drawing-table",
- "chrono",
- "clap",
- "tenki-core",
  "tokio",
 ]
 
