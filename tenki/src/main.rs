@@ -3,80 +3,31 @@ use box_drawing_table::{
     Align, Border, Cell, Column, Row, Table,
 };
 use chrono::prelude::*;
-use clap::{App, Arg};
+use clap::Parser;
 use std::io::Write as _;
 
-fn japanese_weekday(wd: Weekday) -> &'static str {
-    match wd {
-        Weekday::Mon => "月",
-        Weekday::Tue => "火",
-        Weekday::Wed => "水",
-        Weekday::Thu => "木",
-        Weekday::Fri => "金",
-        Weekday::Sat => "土",
-        Weekday::Sun => "日",
-    }
-}
+/// unofficial CLI client for tenki.jp
+#[derive(Parser, Debug)]
+#[command(author, version)]
+struct TenkiOptions {
+    /// the number of days to display (integer between 1 to 3)
+    #[arg(short, long, default_value = "2")]
+    days: usize,
 
-fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> Style {
-    use tenki_core::weather::WeatherKind::*;
-    let mut base = Style::new().bold();
-    if past {
-        base = base.dimmed();
-    }
-    match w {
-        Sunny => base.fg(Color::RGB(255, 159, 33)),
-        Cloudy => base.fg(Color::RGB(194, 189, 182)),
-        LittleRain => base.fg(Color::RGB(85, 208, 242)),
-        WeakRain => base.fg(Color::RGB(85, 150, 242)),
-        Rainy => base.fg(Color::RGB(0, 106, 255)),
-        HeavyRain => base.fg(Color::RGB(143, 74, 255)),
-        Storm => base.fg(Color::RGB(255, 18, 97)),
-        DrySnow => base.fg(Color::RGB(64, 219, 154)),
-        WetSnow => base.fg(Color::RGB(108, 224, 211)),
-        Sleet => base.fg(Color::RGB(139, 180, 247)),
-        Other(_) => base.fg(Color::RGB(255, 18, 180)),
-    }
+    /// location to display (by default, Tsukuba City)
+    #[arg(default_value = "3/11/4020/8220")]
+    location: String,
 }
 
 #[tokio::main]
 async fn main() {
-    let app = App::new("tenki-rs")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("algon-320 <algon.0320@mail.com>")
-        .about("tenki.jp unofficial CLI client")
-        .arg(
-            Arg::with_name("days")
-                .short("d")
-                .long("days")
-                .takes_value(true)
-                .help("integer between 1 to 3")
-                .required(false),
-        )
-        .arg(
-            Arg::with_name("location")
-                .takes_value(true)
-                .help(
-                    "the location part of tenki.jp URL to show
-(e.g. \"3/11/4020/8220\" for Tsukuba city (default))",
-                )
-                .required(false),
-        );
-    let matches = app.get_matches();
+    let options = TenkiOptions::parse();
 
-    let days: usize = matches
-        .value_of("days")
-        .and_then(|days| match days.parse().ok() {
-            Some(d) if (1..=3).contains(&d) => Some(d),
-            _ => {
-                eprintln!("tenki-rs: 'days' option must be an integer between 1 to 3");
-                None
-            }
-        })
-        .unwrap_or(2);
-    let location: &str = matches
-        .value_of("location")
-        .unwrap_or("3/11/4020/8220" /* Tsukuba */);
+    // NOTE: clippy maybe supports this kind of verification?
+    if !(1 <= options.days && options.days <= 3) {
+        eprintln!("tenki: 'days' option must be an integer between 1 to 3");
+        return;
+    }
 
     let loading_indicator = tokio::task::spawn(async {
         print!("loading ");
@@ -88,7 +39,7 @@ async fn main() {
         }
     });
 
-    let forecasts = match tenki_core::fetch_each_3hours_forecast(location).await {
+    let forecasts = match tenki_core::fetch_each_3hours_forecast(&options.location).await {
         Ok(f) => f,
         Err(e) => {
             println!("{}", e);
@@ -116,7 +67,7 @@ async fn main() {
     }
     let mut table = Table::new(columns);
 
-    for f in forecasts.iter().take(days) {
+    for f in forecasts.iter().take(options.days) {
         use tenki_core::weather::*;
 
         let not_yet = Cell {
@@ -220,4 +171,37 @@ async fn main() {
 
     println!("{}", title);
     print!("{}", table);
+}
+
+fn japanese_weekday(wd: Weekday) -> &'static str {
+    match wd {
+        Weekday::Mon => "月",
+        Weekday::Tue => "火",
+        Weekday::Wed => "水",
+        Weekday::Thu => "木",
+        Weekday::Fri => "金",
+        Weekday::Sat => "土",
+        Weekday::Sun => "日",
+    }
+}
+
+fn get_weather_style_rgb(w: &tenki_core::weather::WeatherKind, past: bool) -> Style {
+    use tenki_core::weather::WeatherKind::*;
+    let mut base = Style::new().bold();
+    if past {
+        base = base.dimmed();
+    }
+    match w {
+        Sunny => base.fg(Color::RGB(255, 159, 33)),
+        Cloudy => base.fg(Color::RGB(194, 189, 182)),
+        LittleRain => base.fg(Color::RGB(85, 208, 242)),
+        WeakRain => base.fg(Color::RGB(85, 150, 242)),
+        Rainy => base.fg(Color::RGB(0, 106, 255)),
+        HeavyRain => base.fg(Color::RGB(143, 74, 255)),
+        Storm => base.fg(Color::RGB(255, 18, 97)),
+        DrySnow => base.fg(Color::RGB(64, 219, 154)),
+        WetSnow => base.fg(Color::RGB(108, 224, 211)),
+        Sleet => base.fg(Color::RGB(139, 180, 247)),
+        Other(_) => base.fg(Color::RGB(255, 18, 180)),
+    }
 }
