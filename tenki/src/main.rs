@@ -86,7 +86,8 @@ async fn main() {
             );
             let mut hour = vec![Cell::right(date)];
             hour.extend(f.weathers.iter().map(|(h, _)| {
-                Cell::left_with_style(format!("{:02}時", h.hour()), Style::new().bold())
+                let h = if h.hour() == 0 { 24 } else { h.hour() };
+                Cell::left_with_style(format!("{:02}時", h), Style::new().bold())
             }));
             hour
         }));
